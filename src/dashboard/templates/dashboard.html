@@ -1,0 +1,1575 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Job Intelligence{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-blue-600">{{ stats.total }}</div>
+        <div class="text-xs text-gray-500 mt-1">Jobs ({{ filters.days }}d)</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-green-600">{{ stats.remote }}</div>
+        <div class="text-xs text-gray-500 mt-1">Remote</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-purple-600">{{ stats.with_salary }}</div>
+        <div class="text-xs text-gray-500 mt-1">With Salary</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-amber-600">{{ stats.scored }}</div>
+        <div class="text-xs text-gray-500 mt-1">Scored</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="text-2xl font-bold {% if stats.avg_score and stats.avg_score >= 70 %}text-green-600{% elif stats.avg_score and stats.avg_score >= 50 %}text-yellow-600{% else %}text-gray-400{% endif %}">
+            {{ "%.0f%%"|format(stats.avg_score) if stats.avg_score else "N/A" }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">Avg Score</div>
+    </div>
+</div>
+
+<!-- Source breakdown (clickable to filter) -->
+<div class="flex flex-wrap gap-2 mb-4">
+    {% set source_colors = {
+        "indeed": "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
+        "linkedin": "bg-sky-100 text-sky-700 hover:bg-sky-200",
+        "glassdoor": "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+        "google_jobs": "bg-orange-100 text-orange-700 hover:bg-orange-200",
+        "hackernews": "bg-orange-100 text-orange-800 hover:bg-orange-200",
+        "wellfound": "bg-pink-100 text-pink-700 hover:bg-pink-200",
+        "climatebase": "bg-teal-100 text-teal-700 hover:bg-teal-200",
+        "greenhouse": "bg-lime-100 text-lime-700 hover:bg-lime-200",
+        "ashby": "bg-cyan-100 text-cyan-700 hover:bg-cyan-200",
+        "climatetechlist": "bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
+        "levels_fyi": "bg-violet-100 text-violet-700 hover:bg-violet-200",
+        "otta": "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
+    } %}
+    {% set filter_carry = "&days=" ~ filters.days ~ "&sort=" ~ filters.sort
+        ~ ("&search=" ~ filters.search if filters.search else "")
+        ~ ("&remote_only=true" if filters.remote_only else "")
+        ~ ("&min_score=" ~ filters.min_score if filters.min_score else "")
+        ~ ("&min_salary=" ~ filters.min_salary if filters.min_salary else "")
+        ~ ("&seniority=" ~ filters.seniority if filters.seniority else "")
+        ~ ("&location=" ~ filters.location if filters.location else "")
+        ~ ("&status=" ~ filters.status if filters.status else "")
+    %}
+    <a href="/?{{ filter_carry }}"
+       class="text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer
+              {% if not filters.source %}bg-blue-100 text-blue-700 ring-1 ring-blue-300{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
+        All: {{ stats.total }}
+    </a>
+    {% for src, count in stats.by_source.items() %}
+    <a href="/?source={{ src }}{{ filter_carry }}"
+       class="text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer
+              {% if filters.source == src %}ring-1 ring-gray-400 {{ source_colors.get(src, 'bg-gray-100 text-gray-600') }}{% else %}{{ source_colors.get(src, 'bg-gray-100 text-gray-600') }}{% endif %}">
+        {{ src|replace("_", " ")|title }}: {{ count }}
+    </a>
+    {% endfor %}
+    <span class="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-400">
+        DB Total: {{ stats.db_total }}
+    </span>
+</div>
+
+<!-- Controls Bar -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+    <form method="get" action="/" class="space-y-3">
+        <!-- Row 1: Search + Days + Source + Sort -->
+        <div class="flex flex-wrap gap-3 items-end">
+            <!-- Search -->
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                <input type="text" name="search" value="{{ filters.search }}"
+                       placeholder="Title, company, or keyword..."
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Days -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Days</label>
+                <select name="days" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    {% for d in [1, 3, 7, 14, 30, 60, 90] %}
+                    <option value="{{ d }}" {% if filters.days == d %}selected{% endif %}>{{ d }}d</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Source -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Source</label>
+                <select name="source" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    <option value="">All Sources</option>
+                    {% for src in sources %}
+                    <option value="{{ src }}" {% if filters.source == src %}selected{% endif %}>
+                        {{ src|replace("_", " ")|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Sort -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Sort</label>
+                <select name="sort" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    <option value="remote_first" {% if filters.sort == 'remote_first' %}selected{% endif %}>Remote First</option>
+                    <option value="score" {% if filters.sort == 'score' %}selected{% endif %}>Alignment Score</option>
+                    <option value="salary" {% if filters.sort == 'salary' %}selected{% endif %}>Salary</option>
+                    <option value="culture" {% if filters.sort == 'culture' %}selected{% endif %}>Culture Score</option>
+                    <option value="date" {% if filters.sort == 'date' %}selected{% endif %}>Newest</option>
+                </select>
+            </div>
+
+            <!-- Remote Only -->
+            <div class="flex items-center">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="remote_only" value="true"
+                           {% if filters.remote_only %}checked{% endif %}
+                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 mr-1.5">
+                    <span class="text-sm text-gray-600">Remote Only</span>
+                </label>
+            </div>
+
+            <button type="submit"
+                    class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Filter
+            </button>
+        </div>
+
+        <!-- Row 2: Advanced Filters (collapsible) -->
+        <div id="advanced-filters" class="flex flex-wrap gap-3 items-end pt-2 border-t border-gray-100">
+            <!-- Min Score -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Min Score</label>
+                <div class="flex items-center gap-1">
+                    <input type="number" name="min_score" value="{{ filters.min_score if filters.min_score else '' }}"
+                           placeholder="0" min="0" max="100" step="5"
+                           class="w-20 rounded-md border-gray-300 shadow-sm text-sm px-2 py-1.5 border focus:ring-blue-500 focus:border-blue-500">
+                    <span class="text-xs text-gray-400">%</span>
+                </div>
+            </div>
+
+            <!-- Min Salary -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Min Salary</label>
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-gray-400">$</span>
+                    <input type="number" name="min_salary" value="{{ filters.min_salary if filters.min_salary else '' }}"
+                           placeholder="0" min="0" step="10000"
+                           class="w-24 rounded-md border-gray-300 shadow-sm text-sm px-2 py-1.5 border focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Seniority -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Seniority</label>
+                <select name="seniority" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    <option value="">All Levels</option>
+                    <option value="entry_level" {% if filters.seniority == 'entry_level' %}selected{% endif %}>Entry Level</option>
+                    <option value="mid_level" {% if filters.seniority == 'mid_level' %}selected{% endif %}>Mid Level</option>
+                    <option value="senior_level" {% if filters.seniority == 'senior_level' %}selected{% endif %}>Senior</option>
+                    <option value="director" {% if filters.seniority == 'director' %}selected{% endif %}>Director+</option>
+                </select>
+            </div>
+
+            <!-- Location -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Location</label>
+                <select name="location" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    <option value="">All Locations</option>
+                    <option value="remote" {% if filters.location == 'remote' %}selected{% endif %}>&#127760; Remote</option>
+                    <option value="hybrid" {% if filters.location == 'hybrid' %}selected{% endif %}>&#127970; Hybrid</option>
+                    <option value="us" {% if filters.location == 'us' %}selected{% endif %}>&#127482;&#127480; United States</option>
+                    <option value="uk" {% if filters.location == 'uk' %}selected{% endif %}>&#127468;&#127463; United Kingdom</option>
+                    <option value="canada" {% if filters.location == 'canada' %}selected{% endif %}>&#127464;&#127462; Canada</option>
+                    <option value="europe" {% if filters.location == 'europe' %}selected{% endif %}>&#127466;&#127482; Europe</option>
+                </select>
+            </div>
+
+            <!-- Application Status -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                <select name="status" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border">
+                    <option value="">All Statuses</option>
+                    <option value="new" {% if filters.status == 'new' %}selected{% endif %}>&#x2728; New (Untracked)</option>
+                    <option value="applied" {% if filters.status == 'applied' %}selected{% endif %}>&#x1F4E9; Applied</option>
+                    <option value="skipped" {% if filters.status == 'skipped' %}selected{% endif %}>&#x23ED; Skipped</option>
+                    <option value="viewed" {% if filters.status == 'viewed' %}selected{% endif %}>&#x1F440; Viewed</option>
+                    <option value="phone_screen" {% if filters.status == 'phone_screen' %}selected{% endif %}>&#x1F4DE; Phone Screen</option>
+                    <option value="interview" {% if filters.status == 'interview' %}selected{% endif %}>&#x1F3AF; Interview</option>
+                    <option value="offer" {% if filters.status == 'offer' %}selected{% endif %}>&#x1F389; Offer</option>
+                    <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>&#x274C; Rejected</option>
+                </select>
+            </div>
+
+            <!-- Active filter indicators + Clear -->
+            {% set active_count = (1 if filters.min_score else 0) + (1 if filters.min_salary else 0) + (1 if filters.seniority else 0) + (1 if filters.location else 0) + (1 if filters.status else 0) + (1 if filters.source else 0) + (1 if filters.remote_only else 0) + (1 if filters.search else 0) %}
+            {% if active_count > 0 %}
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                    {{ active_count }} filter{{ 's' if active_count > 1 else '' }} active
+                </span>
+                <a href="/?days={{ filters.days }}&sort={{ filters.sort }}"
+                   class="text-xs text-red-500 hover:text-red-700 font-medium">
+                    &#x2715; Clear All
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Action Bar -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-4 flex flex-wrap items-center gap-3">
+    <!-- Scrape Jobs Button -->
+    <button onclick="toggleScrapePanel()"
+            class="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Scrape New Jobs
+    </button>
+
+    <!-- Score Jobs Dropdown -->
+    <div class="relative" id="score-dropdown-wrapper">
+        <div class="flex items-center">
+            <button onclick="startTask('score-jobs', '/api/score-jobs', this)"
+                    id="btn-score-jobs"
+                    class="px-3 py-1.5 bg-amber-500 text-white text-sm font-medium rounded-l-md hover:bg-amber-600 flex items-center gap-1.5"
+                    {% if not has_resume %}disabled title="Configure resume in Settings first"
+                    style="opacity:0.5;cursor:not-allowed"{% endif %}>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Score Jobs
+            </button>
+            <button onclick="document.getElementById('score-dropdown-menu').classList.toggle('hidden')"
+                    class="px-1.5 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-r-md hover:bg-amber-700 border-l border-amber-700"
+                    {% if not has_resume %}disabled style="opacity:0.5;cursor:not-allowed"{% endif %}>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        <div id="score-dropdown-menu" class="hidden absolute left-0 top-full mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+            <button onclick="startTask('score-jobs', '/api/score-jobs', this); document.getElementById('score-dropdown-menu').classList.add('hidden')"
+                    class="w-full text-left px-4 py-3 hover:bg-amber-50 border-b border-gray-100 transition-colors">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-800">Score New Jobs</div>
+                        <div class="text-xs text-gray-500">Only scores unscored jobs — skips already scored</div>
+                    </div>
+                </div>
+            </button>
+            <button onclick="startTask('rescore-jobs', '/api/rescore-all', this); document.getElementById('score-dropdown-menu').classList.add('hidden')"
+                    class="w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-800">Re-score All Jobs</div>
+                        <div class="text-xs text-gray-500">Recalculates every job with the latest scoring engine</div>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Culture Score Ratings Button -->
+    <button onclick="startTask('enrich-ratings', '/api/enrich-ratings', this)"
+            id="btn-enrich-ratings"
+            class="px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-md hover:bg-purple-600 flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+        </svg>
+        ★ Culture Score Ratings
+    </button>
+
+    <!-- Verify Career Pages Button -->
+    <button onclick="startTask('verify-career-pages', '/api/verify-career-pages', this)"
+            id="btn-verify-career-pages"
+            class="px-3 py-1.5 bg-indigo-500 text-white text-sm font-medium rounded-md hover:bg-indigo-600 flex items-center gap-1.5"
+            title="Verify jobs against company career pages (Greenhouse, Lever, etc.)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        🔍 Verify Career Pages
+    </button>
+
+    <!-- Classify Jobs Button (Semantic Pre-filter) -->
+    <button onclick="startTask('classify-jobs', '/api/classify-jobs', this)"
+            id="btn-classify-jobs"
+            class="px-3 py-1.5 bg-cyan-600 text-white text-sm font-medium rounded-md hover:bg-cyan-700 flex items-center gap-1.5"
+            title="Run AI classifier to filter irrelevant jobs (requires Ollama)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+        </svg>
+        🧠 Classify Jobs
+    </button>
+
+    <!-- Reports Button -->
+    <button onclick="toggleReportsPanel()"
+            class="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Reports & Tasks
+    </button>
+
+    <!-- Auto-Generate Toggle -->
+    <div class="flex items-center gap-2 ml-auto">
+        <span class="text-sm text-gray-600">Auto-Generate:</span>
+        <button hx-post="/api/settings/auto-generate" hx-target="#auto-gen-status" hx-swap="innerHTML"
+                class="px-2 py-1 border rounded text-sm hover:bg-gray-50"
+                title="Toggle auto-generation of resume + cover letter for new jobs">
+            <span id="auto-gen-status">
+                {% if auto_generate %}
+                <span class="text-green-600 font-semibold text-sm">ON</span>
+                {% else %}
+                <span class="text-gray-500 font-semibold text-sm">OFF</span>
+                {% endif %}
+            </span>
+        </button>
+    </div>
+
+    <!-- Generate Selected Button -->
+    <button onclick="generateSelected()"
+            class="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 flex items-center gap-1.5">
+        Generate Application Package
+    </button>
+
+    <!-- Select All -->
+    <label class="inline-flex items-center cursor-pointer text-sm text-gray-500">
+        <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)"
+               class="rounded border-gray-300 text-blue-600 mr-1.5">
+        Select All
+    </label>
+</div>
+
+<!-- Scraping Panel (hidden by default) -->
+<div id="scrape-panel" class="hidden bg-white rounded-lg shadow-sm border border-indigo-200 p-4 mb-4">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Job Scraping Pipeline
+        </h3>
+        <button onclick="toggleScrapePanel()" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+    </div>
+
+    <form id="scrape-form" onsubmit="startScraping(event)">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <!-- Keywords -->
+            <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Keywords</label>
+                <input type="text" name="keywords" value="{{ scraping.keywords }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="data engineer, python developer...">
+            </div>
+
+            <!-- Location -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Location</label>
+                <input type="text" name="location" value="{{ scraping.location }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="United States">
+            </div>
+
+            <!-- Sites -->
+            <div class="col-span-2 md:col-span-1">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Sources</label>
+                <div class="flex flex-wrap gap-x-3 gap-y-1">
+                    {% for src in scraping.sources %}
+                    <label class="inline-flex items-center text-xs cursor-pointer" title="{{ src.desc }}">
+                        <input type="checkbox" name="site_{{ src.key }}" value="{{ src.key }}"
+                               {{ 'checked' if src.enabled }}
+                               class="rounded border-gray-300 text-indigo-600 mr-1">{{ src.label }}{% if src.engine == 'niche' %}<span class="ml-0.5 text-gray-400">*</span>{% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-gray-400 mt-1">* = direct ATS/community scraper</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <!-- Max Results -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Max Results</label>
+                <select name="max_results" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border w-full">
+                    <option value="15" {{ 'selected' if scraping.max_results == 15 }}>15</option>
+                    <option value="30" {{ 'selected' if scraping.max_results == 30 }}>30</option>
+                    <option value="50" {{ 'selected' if scraping.max_results == 50 }}>50</option>
+                    <option value="100" {{ 'selected' if scraping.max_results == 100 }}>100</option>
+                </select>
+            </div>
+
+            <!-- Posted Within -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Posted Within</label>
+                <select name="posted_days" class="rounded-md border-gray-300 shadow-sm text-sm px-3 py-1.5 border w-full">
+                    <option value="1" {{ 'selected' if scraping.posted_days == 1 }}>Last 24h</option>
+                    <option value="3" {{ 'selected' if scraping.posted_days == 3 }}>Last 3 days</option>
+                    <option value="7" {{ 'selected' if scraping.posted_days == 7 }}>Last 7 days</option>
+                    <option value="14" {{ 'selected' if scraping.posted_days == 14 }}>Last 14 days</option>
+                    <option value="30" {{ 'selected' if scraping.posted_days == 30 }}>Last 30 days</option>
+                </select>
+            </div>
+
+            <!-- Remote Only -->
+            <div class="flex items-end">
+                <label class="inline-flex items-center cursor-pointer text-sm">
+                    <input type="checkbox" name="remote_only" value="true"
+                           {{ 'checked' if scraping.remote_only }}
+                           class="rounded border-gray-300 text-indigo-600 mr-1.5">
+                    Remote Only
+                </label>
+            </div>
+
+            <!-- Submit / Stop -->
+            <div class="flex items-end gap-2">
+                <button type="submit" id="scrape-btn"
+                        class="flex-1 px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
+                    <svg id="scrape-spinner" class="hidden animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    <span id="scrape-btn-text">Start Scraping</span>
+                </button>
+                <button type="button" id="scrape-stop-btn"
+                        onclick="stopScraping()"
+                        class="hidden px-4 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center justify-center gap-2">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <rect x="5" y="5" width="10" height="10" rx="1"/>
+                    </svg>
+                    <span>Stop</span>
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Scraping Progress -->
+    <div id="scrape-progress" class="hidden">
+        <div class="mt-3 bg-gray-50 rounded-lg border border-gray-200 p-3">
+            <!-- Top row: progress bar + elapsed time -->
+            <div class="flex items-center gap-3 mb-2">
+                <div class="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div id="scrape-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <span id="scrape-pct" class="text-xs font-bold text-indigo-600 w-10 text-right">0%</span>
+                <span id="scrape-elapsed" class="text-xs text-gray-400 w-14 text-right font-mono">0:00</span>
+            </div>
+
+            <!-- Pipeline stage pills -->
+            <div class="flex flex-wrap gap-1.5 mb-2" id="scrape-stages">
+                <span data-stage="init" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Init</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="scraping" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Scraping</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="dedup" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Dedup</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="saving" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Save</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="screening" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Screen</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="classifying" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Classify</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="scoring" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Score</span>
+                <span class="text-gray-300 text-xs">&rarr;</span>
+                <span data-stage="done" class="scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Done</span>
+            </div>
+
+            <!-- Current status message — monospace log-style for per-job detail -->
+            <div id="scrape-message" class="text-xs text-gray-600 mb-2 min-h-[1.25rem] font-mono bg-white border border-gray-100 rounded px-2 py-1.5 truncate" title="">Initializing...</div>
+
+            <!-- Recent activity log (last 5 messages) -->
+            <div id="scrape-log" class="hidden mb-2">
+                <details class="group">
+                    <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600 select-none">Activity log</summary>
+                    <div id="scrape-log-lines" class="mt-1 max-h-32 overflow-y-auto text-xs font-mono text-gray-500 bg-gray-50 border border-gray-100 rounded px-2 py-1 space-y-0.5"></div>
+                </details>
+            </div>
+
+            <!-- Source results grid (fills in as sources complete) -->
+            <div id="scrape-source-grid" class="hidden">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Sources</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5" id="scrape-sources"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scraping Result -->
+    <div id="scrape-result" class="mt-2"></div>
+</div>
+
+<!-- Reports & Tasks Panel (hidden by default) -->
+<div id="reports-panel" class="hidden bg-white rounded-lg shadow-sm border border-teal-200 p-4 mb-4">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Reports & Scheduled Tasks
+        </h3>
+        <button onclick="toggleReportsPanel()" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- Daily Summary Report -->
+        <div class="border border-gray-200 rounded-lg p-3" id="report-card-daily-summary">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">Daily Summary</div>
+                        <div class="text-xs text-gray-500">Email + Telegram report</div>
+                    </div>
+                </div>
+                <button onclick="startReport('daily-summary', this)"
+                        class="report-run-btn px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Run
+                </button>
+            </div>
+            <div id="progress-report-daily-summary" class="hidden">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                        <div class="task-bar bg-blue-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span class="task-pct text-xs font-bold text-blue-600 w-10 text-right">0%</span>
+                </div>
+                <div class="task-msg text-xs text-gray-500 truncate"></div>
+                <div class="task-elapsed text-xs text-gray-400 mt-0.5"></div>
+            </div>
+        </div>
+
+        <!-- Daily JobSpy Detection -->
+        <div class="border border-gray-200 rounded-lg p-3" id="report-card-daily-jobspy">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">JobSpy Detection</div>
+                        <div class="text-xs text-gray-500">All sources deep scan + Telegram</div>
+                    </div>
+                </div>
+                <button onclick="startReport('daily-jobspy', this)"
+                        class="report-run-btn px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Run
+                </button>
+            </div>
+            <div id="progress-report-daily-jobspy" class="hidden">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                        <div class="task-bar bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span class="task-pct text-xs font-bold text-indigo-600 w-10 text-right">0%</span>
+                </div>
+                <div class="task-msg text-xs text-gray-500 truncate"></div>
+                <div class="task-elapsed text-xs text-gray-400 mt-0.5"></div>
+            </div>
+        </div>
+
+        <!-- Weekly Intelligence Report -->
+        <div class="border border-gray-200 rounded-lg p-3" id="report-card-weekly-intelligence">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">Weekly Intelligence</div>
+                        <div class="text-xs text-gray-500">Curated report + Telegram</div>
+                    </div>
+                </div>
+                <button onclick="startReport('weekly-intelligence', this)"
+                        class="report-run-btn px-3 py-1 bg-amber-600 text-white text-xs font-medium rounded-md hover:bg-amber-700 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Run
+                </button>
+            </div>
+            <div id="progress-report-weekly-intelligence" class="hidden">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                        <div class="task-bar bg-amber-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span class="task-pct text-xs font-bold text-amber-600 w-10 text-right">0%</span>
+                </div>
+                <div class="task-msg text-xs text-gray-500 truncate"></div>
+                <div class="task-elapsed text-xs text-gray-400 mt-0.5"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Scrape Task -->
+        <div class="border border-gray-200 rounded-lg p-3" id="report-card-dashboard-scrape">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">Scheduled Scrape</div>
+                        <div class="text-xs text-gray-500">Full pipeline + auto-score + Telegram</div>
+                    </div>
+                </div>
+                <button onclick="startReport('dashboard-scrape', this)"
+                        class="report-run-btn px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Run
+                </button>
+            </div>
+            <div id="progress-report-dashboard-scrape" class="hidden">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                        <div class="task-bar bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span class="task-pct text-xs font-bold text-green-600 w-10 text-right">0%</span>
+                </div>
+                <div class="task-msg text-xs text-gray-500 truncate"></div>
+                <div class="task-elapsed text-xs text-gray-400 mt-0.5"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unified Task Progress Area (for action bar buttons) -->
+<div id="task-progress-area" class="mb-4 space-y-2"></div>
+
+<!-- Action Result -->
+<div id="action-result" class="mb-4"></div>
+
+<!-- Job List -->
+<div class="space-y-2" id="job-list">
+    {% if not jobs %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+        No jobs found matching your filters. Try adjusting the date range or search terms.
+    </div>
+    {% endif %}
+
+    {% for job in jobs %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 transition-colors duration-150 {% if job.remote_type == 'remote' %}border-l-4 border-l-blue-400{% endif %}">
+        <div class="p-3 flex items-start gap-3">
+            <!-- Checkbox -->
+            <div class="pt-1">
+                <input type="checkbox" class="job-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                       value="{{ job.id }}" id="job-{{ job.id }}">
+            </div>
+
+            <!-- Job Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <a href="/job/{{ job.id }}?{{ filter_carry[1:] }}"
+                           class="text-sm font-semibold text-gray-900 hover:text-blue-600 line-clamp-1"
+                           onclick="markViewed({{ job.id }})">
+                            {{ job.title }}
+                        </a>
+                        <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                            <span class="font-medium text-gray-700">{{ job.company }}</span>
+                            {% if job.location %}
+                            <span>{{ job.location[:40] }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Badges -->
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <!-- Alignment Score -->
+                        {% if job.alignment_score is not none %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold
+                            {% if job.alignment_score >= 70 %}bg-green-100 text-green-800
+                            {% elif job.alignment_score >= 50 %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ "%.0f"|format(job.alignment_score) }}%
+                        </span>
+                        {% endif %}
+
+                        <!-- Ghost badge -->
+                        {% set g = ghost_check(job) %}
+                        {% if g.is_ghost %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-800" title="{{ g.reasons|join('; ') }}">&#x1F47B; Ghost</span>
+                        {% endif %}
+
+                        <!-- Remote badge -->
+                        {% if job.remote_type == 'remote' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Remote</span>
+                        {% elif job.remote_type == 'hybrid' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Hybrid</span>
+                        {% endif %}
+
+                        <!-- Salary -->
+                        {% set sal = salary_str(job) %}
+                        {% if sal %}
+                        <span class="text-xs font-medium text-green-700">{{ sal }}</span>
+                        {% endif %}
+
+                        <!-- Source (colored badge) -->
+                        {% if job.source_site %}
+                        {% set src_colors = {
+                            "indeed": "bg-indigo-100 text-indigo-700",
+                            "linkedin": "bg-sky-100 text-sky-700",
+                            "glassdoor": "bg-emerald-100 text-emerald-700",
+                            "google_jobs": "bg-orange-100 text-orange-700",
+                            "hackernews": "bg-orange-100 text-orange-800",
+                            "wellfound": "bg-pink-100 text-pink-700",
+                            "climatebase": "bg-teal-100 text-teal-700",
+                            "greenhouse": "bg-lime-100 text-lime-700",
+                            "ashby": "bg-cyan-100 text-cyan-700",
+                            "climatetechlist": "bg-emerald-100 text-emerald-800",
+                            "levels_fyi": "bg-violet-100 text-violet-700",
+                            "otta": "bg-yellow-100 text-yellow-700",
+                        } %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ src_colors.get(job.source_site, 'bg-gray-100 text-gray-600') }}">
+                            {{ job.source_site|replace("_", " ")|title }}
+                        </span>
+                        {% endif %}
+
+                        <!-- Culture Score -->
+                        {% if job.company_rating %}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+                            {% if job.company_rating >= 4.0 %}bg-green-100 text-green-700
+                            {% elif job.company_rating >= 3.5 %}bg-yellow-100 text-yellow-700
+                            {% else %}bg-red-100 text-red-700{% endif %}"
+                            title="Culture Score: {{ '%.1f'|format(job.company_rating) }}/5">
+                            &#9733; {{ "%.1f"|format(job.company_rating) }}
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400"
+                            title="Culture Score: Not Available">
+                            &#9733; N/A
+                        </span>
+                        {% endif %}
+
+                        <!-- Doc icons (resume + cover letter) -->
+                        {% if packages.get(job.id) %}
+                        <span class="inline-flex items-center gap-0.5">
+                            <a href="/api/package/{{ job.id }}/resume" target="_blank"
+                               class="text-blue-500 hover:text-blue-700" title="View Resume">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </a>
+                            <a href="/api/package/{{ job.id }}/cover-letter" target="_blank"
+                               class="text-green-500 hover:text-green-700" title="View Cover Letter">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                            </a>
+                        </span>
+                        {% endif %}
+
+                        <!-- Job Age -->
+                        {% set age = job_age(job) %}
+                        {% set age_days = job_age_days(job) %}
+                        <span class="text-xs font-medium {{ age_color(age_days) }}" title="Posted {{ age_days }}d ago">{{ age }}</span>
+
+                        <!-- Scraped Timestamp -->
+                        {% set scraped_ts = scraped_at(job) %}
+                        {% if scraped_ts %}
+                        <span class="text-xs text-gray-400" title="Scraped on {{ job.scraped_date }}">&#x1F4E1; {{ scraped_ts }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description preview + Response Tracking row -->
+                <div class="flex items-center gap-3 mt-1">
+                    {% if job.description %}
+                    <p class="text-xs text-gray-500 line-clamp-1 flex-1 min-w-0">
+                        {{ job.description[:200] }}
+                    </p>
+                    {% else %}
+                    <div class="flex-1"></div>
+                    {% endif %}
+
+                    <!-- Compact Response Tracking -->
+                    {% set resp = responses.get(job.id) %}
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <select id="track-{{ job.id }}" onchange="updateResponse({{ job.id }}, this.value)"
+                                class="text-xs rounded py-0.5 px-1 border cursor-pointer
+                                {% if resp and resp.response_type == 'interview' %}bg-green-50 text-green-700 border-green-300
+                                {% elif resp and resp.response_type == 'phone_screen' %}bg-purple-50 text-purple-700 border-purple-300
+                                {% elif resp and resp.response_type == 'offer' %}bg-emerald-50 text-emerald-700 border-emerald-300
+                                {% elif resp and resp.response_type == 'rejected' %}bg-red-50 text-red-700 border-red-300
+                                {% elif resp and resp.response_type == 'skipped' %}bg-gray-100 text-gray-600 border-gray-300
+                                {% elif resp and resp.response_type == 'viewed' %}bg-yellow-50 text-yellow-700 border-yellow-300
+                                {% elif resp and resp.response_type not in (None, 'none') %}bg-blue-50 text-blue-700 border-blue-300
+                                {% else %}bg-gray-50 text-gray-500{% endif %}">
+                            <option value="none" {% if not resp or resp.response_type == 'none' %}selected{% endif %}>-- Track --</option>
+                            <option value="applied" {% if resp and resp.response_type == 'applied' %}selected{% endif %}>Applied</option>
+                            <option value="skipped" {% if resp and resp.response_type == 'skipped' %}selected{% endif %}>Skipped</option>
+                            <option value="viewed" {% if resp and resp.response_type == 'viewed' %}selected{% endif %}>Viewed</option>
+                            <option value="phone_screen" {% if resp and resp.response_type == 'phone_screen' %}selected{% endif %}>Phone Screen</option>
+                            <option value="interview" {% if resp and resp.response_type == 'interview' %}selected{% endif %}>Interview</option>
+                            <option value="offer" {% if resp and resp.response_type == 'offer' %}selected{% endif %}>Offer</option>
+                            <option value="rejected" {% if resp and resp.response_type == 'rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                        <span id="resp-status-{{ job.id }}" class="text-xs"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Job count -->
+<div class="mt-4 text-center text-sm text-gray-400">
+    Showing {{ jobs|length }} jobs
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Close score dropdown on outside click ────────────────────────
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('score-dropdown-wrapper');
+    const menu = document.getElementById('score-dropdown-menu');
+    if (wrapper && menu && !wrapper.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+// ── Utility: Elapsed Time Formatter ──────────────────────────────
+function formatElapsed(startIso) {
+    if (!startIso) return '';
+    const elapsed = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    if (elapsed < 60) return elapsed + 's';
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    return m + 'm ' + s + 's';
+}
+
+// ── Unified Task Progress System ──────────────────────────────────
+// Tracks SSE connections for action-bar tasks (score, enrich)
+const activeTaskListeners = {};
+
+function startTask(taskId, apiUrl, btnEl) {
+    // Disable button
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.style.opacity = '0.5';
+        btnEl.style.cursor = 'wait';
+    }
+
+    // Create progress bar in task-progress-area
+    const area = document.getElementById('task-progress-area');
+    let container = document.getElementById('task-prog-' + taskId);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'task-prog-' + taskId;
+        container.className = 'bg-white rounded-lg shadow-sm border border-gray-200 p-3';
+        container.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold text-gray-700 task-label"></span>
+                <div class="flex items-center gap-2">
+                    <span class="task-elapsed text-xs text-gray-400"></span>
+                    <span class="task-pct text-xs font-bold text-blue-600">0%</span>
+                    <button class="task-stop-btn px-2 py-0.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors" onclick="stopTask('${taskId}')">Stop</button>
+                </div>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="task-bar h-2 rounded-full transition-all duration-500 bg-blue-500" style="width: 0%"></div>
+            </div>
+            <div class="task-msg text-xs text-gray-500 mt-1 truncate"></div>
+        `;
+        area.appendChild(container);
+    }
+    container.classList.remove('hidden');
+
+    // Set label
+    const labels = {
+        'score-jobs': 'Scoring All Jobs',
+        'rescore-jobs': 'Re-scoring All Jobs (Updated Engine)',
+        'enrich-ratings': 'Culture Score Enrichment',
+        'verify-career-pages': 'Career Page Verification',
+        'classify-jobs': 'AI Job Classification',
+    };
+    const labelEl = container.querySelector('.task-label');
+    if (labelEl) labelEl.textContent = labels[taskId] || taskId;
+
+    // Reset bar
+    const bar = container.querySelector('.task-bar');
+    const pctEl = container.querySelector('.task-pct');
+    const msgEl = container.querySelector('.task-msg');
+    const elapsedEl = container.querySelector('.task-elapsed');
+    bar.style.width = '0%';
+    bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-blue-500';
+    pctEl.textContent = '0%';
+    msgEl.textContent = 'Starting...';
+
+    // Fire POST to start the task
+    fetch(apiUrl, { method: 'POST' })
+        .then(r => r.text())
+        .then(() => {
+            // Start SSE listener
+            listenTaskProgress(taskId, container, btnEl);
+        })
+        .catch(err => {
+            msgEl.textContent = 'Failed to start: ' + err;
+            bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-red-500';
+            if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; btnEl.style.cursor = 'pointer'; }
+        });
+}
+
+function stopTask(taskId) {
+    const container = document.getElementById('task-prog-' + taskId);
+    const stopBtn = container ? container.querySelector('.task-stop-btn') : null;
+    if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = 'Stopping...'; stopBtn.classList.add('opacity-50'); }
+    fetch('/api/task-cancel/' + taskId, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'no_task') {
+                if (stopBtn) { stopBtn.textContent = 'No task'; }
+            }
+        })
+        .catch(err => {
+            if (stopBtn) { stopBtn.textContent = 'Error'; }
+            console.error('Failed to cancel task:', err);
+        });
+}
+
+function listenTaskProgress(taskId, container, btnEl) {
+    if (activeTaskListeners[taskId]) {
+        activeTaskListeners[taskId].close();
+    }
+
+    const evtSource = new EventSource('/api/task-progress/' + taskId);
+    activeTaskListeners[taskId] = evtSource;
+
+    const bar = container.querySelector('.task-bar');
+    const pctEl = container.querySelector('.task-pct');
+    const msgEl = container.querySelector('.task-msg');
+    const elapsedEl = container.querySelector('.task-elapsed');
+    let startTime = null;
+
+    evtSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const pct = data.percent || 0;
+        const stage = data.stage || '';
+        const msg = data.message || '';
+
+        if (!startTime && data.started) startTime = data.started;
+        if (startTime && elapsedEl) elapsedEl.textContent = formatElapsed(startTime);
+
+        // Update bar
+        bar.style.width = pct + '%';
+        pctEl.textContent = pct + '%';
+        msgEl.textContent = msg;
+
+        // Color based on stage
+        const stopBtn = container.querySelector('.task-stop-btn');
+        if (stage === 'error') {
+            bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-red-500';
+            pctEl.className = 'task-pct text-xs font-bold text-red-600';
+        } else if (stage === 'done') {
+            bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-green-500';
+            pctEl.className = 'task-pct text-xs font-bold text-green-600';
+        } else if (stage === 'cancelled') {
+            bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-amber-400';
+            pctEl.className = 'task-pct text-xs font-bold text-amber-600';
+        } else {
+            bar.className = 'task-bar h-2 rounded-full transition-all duration-500 bg-blue-500';
+            pctEl.className = 'task-pct text-xs font-bold text-blue-600';
+        }
+
+        if (pct >= 100 || stage === 'done' || stage === 'error' || stage === 'timeout' || stage === 'cancelled') {
+            evtSource.close();
+            delete activeTaskListeners[taskId];
+            if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; btnEl.style.cursor = 'pointer'; }
+            if (stopBtn) stopBtn.remove();
+            // Auto-hide after success
+            if (stage === 'done') {
+                setTimeout(() => {
+                    container.style.transition = 'opacity 0.5s';
+                    container.style.opacity = '0';
+                    setTimeout(() => container.classList.add('hidden'), 500);
+                }, 8000);
+            }
+        }
+    };
+
+    evtSource.onerror = function() {
+        evtSource.close();
+        delete activeTaskListeners[taskId];
+        if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; btnEl.style.cursor = 'pointer'; }
+        const sb = container.querySelector('.task-stop-btn');
+        if (sb) sb.remove();
+    };
+
+    // Elapsed timer
+    const elapsedTimer = setInterval(() => {
+        if (startTime && elapsedEl) elapsedEl.textContent = formatElapsed(startTime);
+        if (!activeTaskListeners[taskId]) clearInterval(elapsedTimer);
+    }, 1000);
+}
+
+
+// ── Report Runner System ──────────────────────────────────────────
+const activeReportListeners = {};
+
+function startReport(reportName, btnEl) {
+    const taskId = 'report-' + reportName;
+
+    // Disable button, show spinner
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = '<svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Running...';
+    }
+
+    // Show progress area
+    const progressEl = document.getElementById('progress-' + taskId);
+    if (progressEl) progressEl.classList.remove('hidden');
+
+    // Fire POST
+    fetch('/api/run-report/' + reportName, { method: 'POST' })
+        .then(r => r.text())
+        .then(() => {
+            listenReportProgress(taskId, reportName, btnEl);
+        })
+        .catch(err => {
+            if (progressEl) {
+                const msgEl = progressEl.querySelector('.task-msg');
+                if (msgEl) msgEl.textContent = 'Failed: ' + err;
+            }
+            resetReportBtn(reportName, btnEl);
+        });
+}
+
+function listenReportProgress(taskId, reportName, btnEl) {
+    if (activeReportListeners[taskId]) {
+        activeReportListeners[taskId].close();
+    }
+
+    const evtSource = new EventSource('/api/task-progress/' + taskId);
+    activeReportListeners[taskId] = evtSource;
+
+    const progressEl = document.getElementById('progress-' + taskId);
+    if (!progressEl) return;
+
+    const bar = progressEl.querySelector('.task-bar');
+    const pctEl = progressEl.querySelector('.task-pct');
+    const msgEl = progressEl.querySelector('.task-msg');
+    const elapsedEl = progressEl.querySelector('.task-elapsed');
+    let startTime = null;
+
+    // Color map for report types
+    const colors = {
+        'report-daily-summary': { bar: 'bg-blue-500', pct: 'text-blue-600' },
+        'report-daily-jobspy': { bar: 'bg-indigo-500', pct: 'text-indigo-600' },
+        'report-weekly-intelligence': { bar: 'bg-amber-500', pct: 'text-amber-600' },
+        'report-dashboard-scrape': { bar: 'bg-green-500', pct: 'text-green-600' },
+    };
+    const color = colors[taskId] || { bar: 'bg-blue-500', pct: 'text-blue-600' };
+
+    evtSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const pct = data.percent || 0;
+        const stage = data.stage || '';
+        const msg = data.message || '';
+
+        if (!startTime && data.started) startTime = data.started;
+        if (startTime && elapsedEl) elapsedEl.textContent = formatElapsed(startTime);
+
+        bar.style.width = pct + '%';
+        pctEl.textContent = pct + '%';
+        msgEl.textContent = msg;
+
+        if (stage === 'error') {
+            bar.className = 'task-bar bg-red-500 h-1.5 rounded-full transition-all duration-500';
+            pctEl.className = 'task-pct text-xs font-bold text-red-600 w-10 text-right';
+        } else if (stage === 'done') {
+            bar.className = 'task-bar bg-green-500 h-1.5 rounded-full transition-all duration-500';
+            pctEl.className = 'task-pct text-xs font-bold text-green-600 w-10 text-right';
+        } else {
+            bar.className = 'task-bar ' + color.bar + ' h-1.5 rounded-full transition-all duration-500';
+            pctEl.className = 'task-pct text-xs font-bold ' + color.pct + ' w-10 text-right';
+        }
+
+        if (pct >= 100 || stage === 'done' || stage === 'error' || stage === 'timeout') {
+            evtSource.close();
+            delete activeReportListeners[taskId];
+            resetReportBtn(reportName, btnEl);
+        }
+    };
+
+    evtSource.onerror = function() {
+        evtSource.close();
+        delete activeReportListeners[taskId];
+        resetReportBtn(reportName, btnEl);
+    };
+
+    // Elapsed timer
+    const elapsedTimer = setInterval(() => {
+        if (startTime && elapsedEl) elapsedEl.textContent = formatElapsed(startTime);
+        if (!activeReportListeners[taskId]) clearInterval(elapsedTimer);
+    }, 1000);
+}
+
+function resetReportBtn(reportName, btnEl) {
+    if (!btnEl) return;
+    btnEl.disabled = false;
+    const icons = {
+        'daily-summary': 'bg-blue-600 hover:bg-blue-700',
+        'daily-jobspy': 'bg-indigo-600 hover:bg-indigo-700',
+        'weekly-intelligence': 'bg-amber-600 hover:bg-amber-700',
+        'dashboard-scrape': 'bg-green-600 hover:bg-green-700',
+    };
+    btnEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg> Run';
+}
+
+
+// ── Selection Helpers ─────────────────────────────────────────────
+function toggleAll(checked) {
+    document.querySelectorAll('.job-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function getSelectedIds() {
+    const ids = [];
+    document.querySelectorAll('.job-checkbox:checked').forEach(cb => ids.push(cb.value));
+    return ids;
+}
+
+function generateSelected() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
+        document.getElementById('action-result').innerHTML =
+            '<div class="text-yellow-600 bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">No jobs selected. Use the checkboxes to select jobs first.</div>';
+        return;
+    }
+
+    const form = new FormData();
+    form.append('job_ids', ids.join(','));
+
+    fetch('/api/generate-packages', { method: 'POST', body: form })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('action-result').innerHTML = html;
+        });
+}
+
+// ── Response Tracking (inline) ───────────────────────────────────
+function updateResponse(jobId, responseType) {
+    const statusEl = document.getElementById('resp-status-' + jobId);
+    const sel = document.getElementById('track-' + jobId);
+    const form = new FormData();
+    form.append('response_type', responseType);
+    form.append('notes', '');
+
+    // Immediate visual feedback
+    const styles = {
+        'interview': 'bg-green-50 text-green-700 border-green-300',
+        'phone_screen': 'bg-purple-50 text-purple-700 border-purple-300',
+        'offer': 'bg-emerald-50 text-emerald-700 border-emerald-300',
+        'rejected': 'bg-red-50 text-red-700 border-red-300',
+        'skipped': 'bg-gray-100 text-gray-600 border-gray-300',
+        'viewed': 'bg-yellow-50 text-yellow-700 border-yellow-300',
+        'applied': 'bg-blue-50 text-blue-700 border-blue-300',
+        'none': 'bg-gray-50 text-gray-500',
+    };
+    if (sel) {
+        sel.className = 'text-xs rounded py-0.5 px-1 border cursor-pointer ' + (styles[responseType] || styles['none']);
+    }
+
+    fetch('/api/response/' + jobId, { method: 'POST', body: form })
+        .then(r => r.text())
+        .then(() => {
+            if (statusEl) {
+                statusEl.textContent = '\u2713 Saved';
+                statusEl.className = 'text-xs text-green-600 font-medium';
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        })
+        .catch(() => {
+            if (statusEl) {
+                statusEl.textContent = '\u2717 Error';
+                statusEl.className = 'text-xs text-red-600 font-medium';
+                setTimeout(() => { statusEl.textContent = ''; }, 5000);
+            }
+            // Revert styling on error
+            if (sel) {
+                sel.className = 'text-xs rounded py-0.5 px-1 border cursor-pointer bg-gray-50 text-gray-500';
+            }
+        });
+}
+
+// ── Auto-mark viewed on click ────────────────────────────────────
+function markViewed(jobId) {
+    const sel = document.getElementById('track-' + jobId);
+    // Only mark as viewed if not already tracked with a higher-priority status
+    if (sel && (sel.value === 'none' || sel.value === '')) {
+        const form = new FormData();
+        form.append('response_type', 'viewed');
+        form.append('notes', '');
+        fetch('/api/response/' + jobId, { method: 'POST', body: form });
+        // Fire-and-forget — page is navigating away
+    }
+}
+
+// ── Auto-refresh on status changes (cross-tab) ──────────────────
+(function() {
+    let lastVersion = 0;
+    setInterval(async () => {
+        try {
+            const r = await fetch('/api/status-version');
+            const d = await r.json();
+            if (lastVersion === 0) { lastVersion = d.version; return; }
+            if (d.version > lastVersion) {
+                lastVersion = d.version;
+                location.reload();
+            }
+        } catch(e) {}
+    }, 5000);  // check every 5 seconds
+})();
+
+// ── Scraping Pipeline ────────────────────────────────────────────
+
+function toggleScrapePanel() {
+    const panel = document.getElementById('scrape-panel');
+    panel.classList.toggle('hidden');
+    // Close reports panel if open
+    document.getElementById('reports-panel').classList.add('hidden');
+}
+
+function toggleReportsPanel() {
+    const panel = document.getElementById('reports-panel');
+    panel.classList.toggle('hidden');
+    // Close scrape panel if open
+    document.getElementById('scrape-panel').classList.add('hidden');
+}
+
+// ── Scraping progress state ─────────────────────────────────
+let _scrapeTimerInterval = null;
+let _scrapeStartTime = null;
+let _scrapeSourceData = {};   // { sourceName: { count: N, status: 'ok'|'error'|'empty' } }
+const STAGE_ORDER = ['init', 'scraping', 'dedup', 'saving', 'screening', 'classifying', 'scoring', 'done'];
+
+function startScraping(event) {
+    event.preventDefault();
+    const form = document.getElementById('scrape-form');
+    const formData = new FormData();
+
+    // Collect form values
+    formData.append('keywords', form.querySelector('[name="keywords"]').value);
+    formData.append('location', form.querySelector('[name="location"]').value);
+    formData.append('max_results', form.querySelector('[name="max_results"]').value);
+    formData.append('posted_days', form.querySelector('[name="posted_days"]').value);
+
+    // Remote only
+    const remoteCheck = form.querySelector('[name="remote_only"]');
+    formData.append('remote_only', remoteCheck && remoteCheck.checked ? 'true' : 'false');
+
+    // Collect checked sites
+    const sites = [];
+    form.querySelectorAll('input[name^="site_"]:checked').forEach(cb => sites.push(cb.value));
+    if (sites.length === 0) {
+        document.getElementById('scrape-result').innerHTML =
+            '<div class="text-red-600 text-sm">Select at least one source.</div>';
+        return;
+    }
+    formData.append('sites', sites.join(','));
+
+    // Reset progress UI state
+    _scrapeSourceData = {};
+    _scrapeLogMessages = [];
+    _scrapeStartTime = Date.now();
+    resetStagePills();
+    document.getElementById('scrape-sources').innerHTML = '';
+    document.getElementById('scrape-source-grid').classList.add('hidden');
+    document.getElementById('scrape-log').classList.add('hidden');
+    document.getElementById('scrape-log-lines').innerHTML = '';
+    document.getElementById('scrape-bar').style.width = '0%';
+    document.getElementById('scrape-bar').className = 'bg-indigo-600 h-2.5 rounded-full transition-all duration-500';
+    document.getElementById('scrape-pct').textContent = '0%';
+    document.getElementById('scrape-elapsed').textContent = '0:00';
+    document.getElementById('scrape-message').textContent = 'Initializing...';
+
+    // Show spinner, disable start button, show stop button
+    document.getElementById('scrape-spinner').classList.remove('hidden');
+    document.getElementById('scrape-btn-text').textContent = 'Scraping...';
+    document.getElementById('scrape-btn').disabled = true;
+    document.getElementById('scrape-stop-btn').classList.remove('hidden');
+    document.getElementById('scrape-stop-btn').disabled = false;
+    document.getElementById('scrape-stop-btn').innerHTML = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="1"/></svg><span>Stop</span>';
+    document.getElementById('scrape-progress').classList.remove('hidden');
+    document.getElementById('scrape-result').innerHTML = '';
+
+    // Start elapsed timer
+    startElapsedTimer();
+
+    // Trigger the scrape
+    fetch('/api/scrape-jobs', { method: 'POST', body: formData })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('scrape-result').innerHTML = html;
+            // Start SSE progress listener
+            listenScrapeProgress();
+        })
+        .catch(err => {
+            document.getElementById('scrape-result').innerHTML =
+                '<div class="text-red-600 text-sm">Failed to start scraping: ' + err + '</div>';
+            resetScrapeUI();
+        });
+}
+
+function startElapsedTimer() {
+    if (_scrapeTimerInterval) clearInterval(_scrapeTimerInterval);
+    _scrapeTimerInterval = setInterval(() => {
+        if (!_scrapeStartTime) return;
+        const elapsed = Math.floor((Date.now() - _scrapeStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        document.getElementById('scrape-elapsed').textContent =
+            mins + ':' + String(secs).padStart(2, '0');
+    }, 1000);
+}
+
+function stopElapsedTimer() {
+    if (_scrapeTimerInterval) {
+        clearInterval(_scrapeTimerInterval);
+        _scrapeTimerInterval = null;
+    }
+}
+
+function resetStagePills() {
+    document.querySelectorAll('.scrape-pill').forEach(pill => {
+        pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400';
+    });
+}
+
+function updateStagePill(currentStage) {
+    const stageIdx = STAGE_ORDER.indexOf(currentStage);
+    document.querySelectorAll('.scrape-pill').forEach(pill => {
+        const pillStage = pill.getAttribute('data-stage');
+        const pillIdx = STAGE_ORDER.indexOf(pillStage);
+
+        if (pillIdx < stageIdx) {
+            // Completed stage — green
+            pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+        } else if (pillStage === currentStage) {
+            // Active stage — blue with pulse
+            pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 animate-pulse';
+        } else {
+            // Future stage — gray
+            pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400';
+        }
+    });
+
+    // Special case for error
+    if (currentStage === 'error') {
+        // Mark current active pill as red
+        document.querySelectorAll('.scrape-pill.animate-pulse').forEach(pill => {
+            pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700';
+        });
+    }
+}
+
+function parseSourceMessage(msg) {
+    // Match patterns like "indeed: found 135 jobs", "glassdoor: no results", "linkedin: error — ..."
+    const foundMatch = msg.match(/^(\w+):\s*found\s+(\d+)\s+jobs?$/i);
+    if (foundMatch) {
+        return { source: foundMatch[1], count: parseInt(foundMatch[2]), status: 'ok' };
+    }
+    const noResultMatch = msg.match(/^(\w+):\s*no results$/i);
+    if (noResultMatch) {
+        return { source: noResultMatch[1], count: 0, status: 'empty' };
+    }
+    const errorMatch = msg.match(/^(\w+):\s*error/i);
+    if (errorMatch) {
+        return { source: errorMatch[1], count: 0, status: 'error' };
+    }
+    return null;
+}
+
+function updateSourceGrid(sourceInfo) {
+    if (!sourceInfo) return;
+    _scrapeSourceData[sourceInfo.source] = sourceInfo;
+
+    const grid = document.getElementById('scrape-sources');
+    const gridContainer = document.getElementById('scrape-source-grid');
+    gridContainer.classList.remove('hidden');
+
+    // Rebuild grid
+    grid.innerHTML = '';
+    for (const [name, info] of Object.entries(_scrapeSourceData)) {
+        const card = document.createElement('div');
+        let bgClass, textClass, icon;
+        if (info.status === 'ok' && info.count > 0) {
+            bgClass = 'bg-green-50 border-green-200';
+            textClass = 'text-green-700';
+            icon = '<svg class="w-3 h-3 text-green-500 inline mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
+        } else if (info.status === 'error') {
+            bgClass = 'bg-red-50 border-red-200';
+            textClass = 'text-red-600';
+            icon = '<svg class="w-3 h-3 text-red-500 inline mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
+        } else {
+            bgClass = 'bg-gray-50 border-gray-200';
+            textClass = 'text-gray-500';
+            icon = '<svg class="w-3 h-3 text-gray-400 inline mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>';
+        }
+        card.className = `border rounded px-2 py-1.5 ${bgClass}`;
+        card.innerHTML = `<div class="text-xs font-medium ${textClass}">${icon}${name.replace('_', ' ')}</div>` +
+                         `<div class="text-sm font-bold ${textClass}">${info.count} jobs</div>`;
+        grid.appendChild(card);
+    }
+}
+
+// Activity log buffer (last N messages)
+const _scrapeLogMax = 50;
+let _scrapeLogMessages = [];
+
+function appendToScrapeLog(msg) {
+    _scrapeLogMessages.push(msg);
+    if (_scrapeLogMessages.length > _scrapeLogMax) _scrapeLogMessages.shift();
+
+    const logContainer = document.getElementById('scrape-log');
+    const logLines = document.getElementById('scrape-log-lines');
+    logContainer.classList.remove('hidden');
+
+    // Show last 50 lines
+    logLines.innerHTML = _scrapeLogMessages.map(m =>
+        '<div class="truncate">' + m.replace(/</g, '&lt;') + '</div>'
+    ).join('');
+    // Auto-scroll to bottom
+    logLines.scrollTop = logLines.scrollHeight;
+}
+
+function stopScraping() {
+    const stopBtn = document.getElementById('scrape-stop-btn');
+    stopBtn.disabled = true;
+    stopBtn.innerHTML = '<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg><span>Stopping...</span>';
+
+    fetch('/api/scrape-cancel', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            console.log('Cancel response:', data);
+        })
+        .catch(err => {
+            console.error('Cancel failed:', err);
+            stopBtn.disabled = false;
+            stopBtn.innerHTML = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="1"/></svg><span>Stop</span>';
+        });
+}
+
+function listenScrapeProgress() {
+    const evtSource = new EventSource('/api/scrape-progress');
+
+    evtSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const pct = data.percent || 0;
+        const stage = data.stage || '';
+        const msg = data.message || '';
+
+        // Update progress bar
+        document.getElementById('scrape-bar').style.width = pct + '%';
+        document.getElementById('scrape-pct').textContent = pct + '%';
+
+        // Update current message with tooltip for full text
+        const msgEl = document.getElementById('scrape-message');
+        msgEl.textContent = msg;
+        msgEl.title = msg;
+
+        // Append to activity log
+        appendToScrapeLog('[' + pct + '%] ' + msg);
+
+        // Update stage pills
+        updateStagePill(stage);
+
+        // Parse source-specific messages and update source grid
+        const sourceInfo = parseSourceMessage(msg);
+        if (sourceInfo) {
+            updateSourceGrid(sourceInfo);
+        }
+
+        // Color changes for bar
+        const bar = document.getElementById('scrape-bar');
+        if (stage === 'error') {
+            bar.className = 'bg-red-500 h-2.5 rounded-full transition-all duration-500';
+        } else if (stage === 'done') {
+            bar.className = 'bg-green-500 h-2.5 rounded-full transition-all duration-500';
+        }
+
+        if (pct >= 100 || stage === 'done' || stage === 'error' || stage === 'timeout' || stage === 'cancelled') {
+            evtSource.close();
+            stopElapsedTimer();
+            resetScrapeUI();
+
+            // Mark done pill
+            if (stage === 'done') {
+                updateStagePill('done');
+                const donePill = document.querySelector('.scrape-pill[data-stage="done"]');
+                if (donePill) {
+                    donePill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+                }
+            }
+
+            // Color bar for cancelled
+            if (stage === 'cancelled') {
+                bar.className = 'bg-amber-500 h-2.5 rounded-full transition-all duration-500';
+                // Mark current active pill as amber
+                document.querySelectorAll('.scrape-pill.animate-pulse').forEach(pill => {
+                    pill.className = 'scrape-pill px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700';
+                });
+            }
+
+            // Build result summary
+            if (stage === 'done') {
+                const elapsed = document.getElementById('scrape-elapsed').textContent;
+                document.getElementById('scrape-result').innerHTML =
+                    '<div class="text-green-600 bg-green-50 border border-green-200 rounded p-3 text-sm mt-2">' +
+                    msg + ' (' + elapsed + ') <a href="/" class="underline font-medium">Refresh</a> to see new jobs.</div>';
+            } else if (stage === 'cancelled') {
+                const elapsed = document.getElementById('scrape-elapsed').textContent;
+                document.getElementById('scrape-result').innerHTML =
+                    '<div class="text-amber-600 bg-amber-50 border border-amber-200 rounded p-3 text-sm mt-2">' +
+                    '<strong>Stopped.</strong> ' + msg + ' (' + elapsed + ') ' +
+                    '<a href="/" class="underline font-medium">Refresh</a> to see any saved jobs.</div>';
+            } else if (stage === 'error') {
+                document.getElementById('scrape-result').innerHTML =
+                    '<div class="text-red-600 bg-red-50 border border-red-200 rounded p-3 text-sm mt-2">' + msg + '</div>';
+            } else if (stage === 'timeout') {
+                document.getElementById('scrape-result').innerHTML =
+                    '<div class="text-amber-600 bg-amber-50 border border-amber-200 rounded p-3 text-sm mt-2">' +
+                    'Scraping timed out. Some jobs may have been saved. <a href="/" class="underline font-medium">Refresh</a> to check.</div>';
+            }
+        }
+    };
+
+    evtSource.onerror = function() {
+        evtSource.close();
+        stopElapsedTimer();
+        resetScrapeUI();
+    };
+}
+
+function resetScrapeUI() {
+    document.getElementById('scrape-spinner').classList.add('hidden');
+    document.getElementById('scrape-btn-text').textContent = 'Start Scraping';
+    document.getElementById('scrape-btn').disabled = false;
+    document.getElementById('scrape-stop-btn').classList.add('hidden');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,184 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+data/test.db
+data/job_search.db
+
+# Cache
+cache/
+*.cache
+
+# Output files
+output/
+reports/*.csv
+reports/*.xlsx
+reports/*.json
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# LinkedIn specific
+linkedin_cookies.json
+linkedin_raw_*.csv
+linkedin_*.log
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Configuration files with sensitive data
+config/user_preferences.json
+config/profile_intelligence.json
+config/intelligent_job_search_config.json
+config/real_profile_intelligence.json
+config/intelligent_search_config.json
+
+# Test results
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation build
+docs/_build/
+
+# Generated reports (contain personal job search data)
+reports/daily/
+reports/weekly/
+reports/archive/
+reports/pipeline_report_*
+
+# Trained models
+models/*.joblib
+models/*.pkl
+
+# ── Excluded modules (product features, not open-source) ──────
+
+# LinkedIn intelligence module
+src/core/linkedin_wrapper.py
+src/core/linkedin_analyzer.py
+src/core/linkedin_authenticator.py
+src/core/job_search_intelligence.py
+src/core/enhanced_analyzer.py
+src/database/enhanced_linkedin_database.py
+src/intelligence/active_linkedin_job_finder.py
+src/intelligence/enhanced_linkedin_analyzer.py
+src/intelligence/integrated_job_search_intelligence.py
+src/intelligence/linkedin_job_market_analyzer.py
+src/intelligence/linkedin_profile_extractor.py
+src/intelligence/live_linkedin_job_scraper.py
+src/intelligence/profile_based_intelligence.py
+src/intelligence/real_linkedin_api_client.py
+src/intelligence/real_linkedin_data_collector.py
+src/intelligence/real_linkedin_job_scraper.py
+src/dashboard/templates/linkedin.html
+
+# Analytics module
+src/analytics/
+src/dashboard/templates/analytics.html
+core/predictive_analytics.py
+job_search/job_market_analytics.py
+scripts/pipeline_analytics.py
+scripts/scheduled_tasks/weekly_predictive_analytics.py
+
+# Tools/monitoring module
+src/dashboard/templates/tools.html
+src/dashboard/real_time_dashboard.py
+src/dashboard/database_field_explorer.py
+src/dashboard/pipeline_metrics.py
+src/integrations/monitoring.py
+job_dashboard.py
+
+# Tracking module (LinkedIn metrics)
+src/tracking/comprehensive_profile_metrics.py
+src/tracking/enhanced_linkedin_metrics_collector.py
+src/tracking/follower_change_analysis.py
+src/tracking/follower_change_tracker.py
+src/tracking/weekly_dashboard_generator.py
+src/tracking/weekly_metrics_collector.py
+src/tracking/weekly_tracking_config.py
+
+# LinkedIn-related scripts
+scripts/scheduled_tasks/daily_content_performance.py
+scripts/scheduled_tasks/daily_network_insights.py
+scripts/scheduled_tasks/weekly_content_tracking.py
+scripts/scheduled_tasks/weekly_intelligence_orchestrator.py
+scripts/scheduled_tasks/biweekly_deep_analysis.py
+scripts/tools/
+# Personal career data
+config/achievement_bank.json
+config/keyword_profiles/*.yaml
+!config/keyword_profiles/*.example.yaml
+config/job_search_config.py
+
+# Personal job search research & profile tools
+features_to_built/auto_company_research/company_research_database.md
+tools/create_grygorii_profile.py
+tools/update_profile_with_real_data.py
+tools/verify_grygorii_profile_integration.py
+tools/generate_grygorii_job_search_config.py
+
+# LinkedIn-specific modules (excluded from public release)
+src/core/linkedin_intelligence.py
+src/intelligence/integrated_linkedin_intelligence.py

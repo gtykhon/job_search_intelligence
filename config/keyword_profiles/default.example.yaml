@@ -1,0 +1,94 @@
+name: default
+description: >
+  Keyword profile for [Your Name] — targeting [your target roles]
+  in [your target industries]. [Work arrangement] preferred. $[X]K+ target.
+  Excludes: [your exclusions].
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GREEN — Strong positive signals. Boost search relevance. PASS immediately.
+# ─────────────────────────────────────────────────────────────────────────────
+green:
+
+  # Company type & funding stage
+  - product company
+  - saas
+  - b2b saas
+  - fintech
+  - healthtech
+  - climate tech
+  - startup
+  - growth stage
+  - series b
+  - series c
+  - profitable
+
+  # Engineering culture
+  - engineering-driven
+  - engineering culture
+  - product-led
+  - data-driven
+  - greenfield
+  - high ownership
+  - open source
+
+  # Team & work culture
+  - collaborative
+  - autonomous teams
+  - flat hierarchy
+  - async-first
+  - distributed team
+  - psychological safety
+  - learning culture
+  - work-life balance
+
+  # Compensation & benefits
+  - equity
+  - stock options
+  - remote flexibility
+  - remote-first
+  - flexible hours
+  - unlimited pto
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# YELLOW — Conditional signals. Review context.
+# ─────────────────────────────────────────────────────────────────────────────
+yellow:
+
+  - fast-paced
+  - metrics-driven
+  - results-oriented
+  - high-pressure
+  - hustle
+  - wear many hats
+  - bureaucratic
+  - siloed
+  - on-call rotation
+  - hybrid required
+  - pre-revenue
+  - short-term contract
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RED — Hard misalignment. FAIL immediately.
+# ─────────────────────────────────────────────────────────────────────────────
+red:
+
+  # Add your hard exclusions
+  - defense contractor
+  - government contractor
+  - security clearance required
+  - top secret
+  - ts/sci
+  - sales development representative
+  - commission-based
+  - no remote
+  - relocation required
+  - staffing agency posting
+  - 1099 only
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Number of YELLOW matches required to trigger OVERRIDE_REQUIRED.
+# ─────────────────────────────────────────────────────────────────────────────
+yellow_threshold: 3

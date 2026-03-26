@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Job Boards — Job Intelligence{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Job Boards & Career Sites</h1>
+        <p class="text-sm text-gray-500 mt-1">Quick links to all job boards used in this pipeline</p>
+    </div>
+
+    <!-- Primary Job Boards -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Primary Job Boards</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <a href="https://www.linkedin.com/jobs/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">in</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">LinkedIn Jobs</h3>
+                        <p class="text-xs text-gray-500">linkedin.com/jobs</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Primary source — scraped via JobSpy. Best for applicant count, Easy Apply, repost detection.</p>
+                {% if source_counts.get('linkedin') %}<span class="text-xs text-blue-600 font-medium">{{ source_counts['linkedin'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://www.indeed.com/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-blue-800 flex items-center justify-center text-white font-bold text-xs">IN</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">Indeed</h3>
+                        <p class="text-xs text-gray-500">indeed.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Major aggregator — salary data, company reviews, job descriptions. Scraped via JobSpy.</p>
+                {% if source_counts.get('indeed') %}<span class="text-xs text-blue-600 font-medium">{{ source_counts['indeed'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://www.glassdoor.com/Job/index.htm" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-xs">GD</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">Glassdoor</h3>
+                        <p class="text-xs text-gray-500">glassdoor.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Jobs + company culture ratings, CEO approval, salary data. Also used for enrichment via RapidAPI.</p>
+                {% if source_counts.get('glassdoor') %}<span class="text-xs text-blue-600 font-medium">{{ source_counts['glassdoor'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://www.google.com/search?q=software+engineer+jobs&ibp=htl;jobs" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white font-bold text-xs">G</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">Google Jobs</h3>
+                        <p class="text-xs text-gray-500">google.com/jobs</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Aggregates from multiple sources. Good for discovering jobs not on LinkedIn/Indeed.</p>
+                {% if source_counts.get('google_jobs') %}<span class="text-xs text-blue-600 font-medium">{{ source_counts['google_jobs'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://www.usajobs.gov/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-white font-bold text-xs">US</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">USAJobs</h3>
+                        <p class="text-xs text-gray-500">usajobs.gov</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Federal government positions. Clearance-required roles, GS pay scales, veteran preference.</p>
+            </a>
+
+            <a href="https://wellfound.com/jobs" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-black flex items-center justify-center text-white font-bold text-xs">W</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">Wellfound</h3>
+                        <p class="text-xs text-gray-500">wellfound.com (ex-AngelList)</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Startup jobs — equity info, funding stage, team size. Good for Series A-C companies.</p>
+                {% if source_counts.get('wellfound') %}<span class="text-xs text-blue-600 font-medium">{{ source_counts['wellfound'] }} jobs scraped</span>{% endif %}
+            </a>
+
+        </div>
+    </div>
+
+    <!-- ATS Boards & Niche Sites -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">ATS Boards & Niche Sites</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <a href="https://www.greenhouse.io/explore" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-green-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center text-white font-bold text-xs">GH</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-green-600">Greenhouse</h3>
+                        <p class="text-xs text-gray-500">boards.greenhouse.io</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Free public API for career page verification. Used in Phase 1 of career page checker.</p>
+                {% if source_counts.get('greenhouse') %}<span class="text-xs text-green-600 font-medium">{{ source_counts['greenhouse'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://news.ycombinator.com/item?id=42575537" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-orange-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-xs">HN</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-orange-600">Hacker News Jobs</h3>
+                        <p class="text-xs text-gray-500">news.ycombinator.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Monthly "Who's Hiring" thread. High-quality tech roles, startup-heavy, no recruiter spam.</p>
+                {% if source_counts.get('hackernews') %}<span class="text-xs text-orange-600 font-medium">{{ source_counts['hackernews'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://climatebase.org/jobs" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-emerald-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">CB</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-emerald-600">Climatebase</h3>
+                        <p class="text-xs text-gray-500">climatebase.org</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Climate tech and sustainability jobs. Mission-driven companies focused on environmental impact.</p>
+                {% if source_counts.get('climatebase') %}<span class="text-xs text-emerald-600 font-medium">{{ source_counts['climatebase'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://jobs.ashbyhq.com/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-purple-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center text-white font-bold text-xs">A</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-purple-600">Ashby</h3>
+                        <p class="text-xs text-gray-500">jobs.ashbyhq.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Modern ATS used by fast-growing tech companies. Detected in ghost job analysis.</p>
+                {% if source_counts.get('ashby') %}<span class="text-xs text-purple-600 font-medium">{{ source_counts['ashby'] }} jobs scraped</span>{% endif %}
+            </a>
+
+            <a href="https://jobs.lever.co/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-sky-500 flex items-center justify-center text-white font-bold text-xs">LV</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-sky-600">Lever</h3>
+                        <p class="text-xs text-gray-500">jobs.lever.co</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">ATS with free public API. Used in Phase 1 career page verification alongside Greenhouse.</p>
+            </a>
+
+            <a href="https://www.clearancejobs.com/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-gray-400 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-gray-600 flex items-center justify-center text-white font-bold text-xs">CJ</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-gray-700">ClearanceJobs</h3>
+                        <p class="text-xs text-gray-500">clearancejobs.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Security clearance positions — TS/SCI, Secret, Public Trust. DC/NoVA focused.</p>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- Research & Salary Sites -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Research & Salary Data</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <a href="https://www.levels.fyi/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-yellow-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-yellow-500 flex items-center justify-center text-white font-bold text-xs">LF</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-yellow-600">Levels.fyi</h3>
+                        <p class="text-xs text-gray-500">levels.fyi</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Verified salary data by level/company. TC breakdowns, equity, bonus, stock refresh.</p>
+            </a>
+
+            <a href="https://www.teamblind.com/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-blue-400 flex items-center justify-center text-white font-bold text-xs">B</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600">Blind</h3>
+                        <p class="text-xs text-gray-500">teamblind.com</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Anonymous professional network — real TC data, interview experiences, company culture intel.</p>
+            </a>
+
+            <a href="https://web.archive.org/" target="_blank" rel="noopener noreferrer"
+               class="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-gray-400 transition-all group">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-lg bg-gray-500 flex items-center justify-center text-white font-bold text-xs">WB</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-gray-700">Wayback Machine</h3>
+                        <p class="text-xs text-gray-500">web.archive.org</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">Used for ghost job detection — CDX API checks when a job URL was first archived vs. posted date.</p>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- Source Stats -->
+    {% if source_counts %}
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Jobs by Source</h2>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <div class="flex flex-wrap gap-3">
+                {% for source, count in source_counts.items() | sort(attribute='1', reverse=True) %}
+                <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <span class="text-sm font-medium text-gray-700">{{ source }}</span>
+                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="text-xs text-gray-400 mt-3">Total: {{ source_counts.values() | sum }} jobs across {{ source_counts | length }} sources</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

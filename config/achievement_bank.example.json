@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "source": "your_resume.md",
+    "last_synced": "YYYY-MM-DD",
+    "authentication_status": "ALL_VERIFIED",
+    "rule": "LLM must only reference achievements present in this file. No bullets outside this bank.",
+    "changelog": "v1: initial setup"
+  },
+  "achievements": [
+    {
+      "id": "example_project_1",
+      "label": "Example Project — Brief Title",
+      "xyz_statement": "Accomplished [outcome] by implementing [approach], which resulted in [measurable impact].",
+      "resume_bullets": [
+        "Built [system] using [tools] — [metric 1], [metric 2], [metric 3]",
+        "Engineered [component] achieving [result] through [method]"
+      ],
+      "verified_tools": ["python", "sql", "tool_name"],
+      "verified_metrics": {
+        "metric_name": "value",
+        "efficiency_gain_pct": 0,
+        "metric_source": "authenticated"
+      },
+      "coverage": {
+        "data_engineer": 80,
+        "software_engineer": 75,
+        "analytics_engineer": 70
+      },
+      "employer": "Company Name, Division",
+      "timeline": "Month YYYY – Month YYYY",
+      "interview_survivability": "PASS",
+      "authentication_status": "VERIFIED"
+    },
+    {
+      "id": "example_project_2",
+      "label": "Example Project 2 — Brief Title",
+      "xyz_statement": "Accomplished [outcome] by implementing [approach], which resulted in [measurable impact].",
+      "resume_bullets": [
+        "Implemented [feature] for [system] — [metric 1], [metric 2]"
+      ],
+      "verified_tools": ["tool_1", "tool_2"],
+      "verified_metrics": {
+        "metric_source": "authenticated"
+      },
+      "coverage": {
+        "data_engineer": 70,
+        "software_engineer": 80
+      },
+      "employer": "Company Name, Division",
+      "timeline": "Month YYYY – Month YYYY",
+      "interview_survivability": "PASS",
+      "authentication_status": "VERIFIED"
+    }
+  ],
+  "blocked_achievements": [
+    {
+      "id": "example_blocked",
+      "reason": "BLOCKED — metrics unverified. Do not generate bullets.",
+      "blocked_since": "YYYY-MM-DD"
+    }
+  ]
+}

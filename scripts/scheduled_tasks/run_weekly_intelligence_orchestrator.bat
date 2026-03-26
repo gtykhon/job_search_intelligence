@@ -1,0 +1,21 @@
+@echo off
+REM Weekly Intelligence Orchestrator - Windows Task Scheduler Batch File
+REM Schedule this to run every Monday at 8:00 AM
+
+echo Starting Weekly Intelligence Orchestrator...
+echo Time: %date% %time%
+
+cd /d "C:\path\to\job_search_intelligence"
+
+REM Activate virtual environment and run task
+.venv\Scripts\python.exe "scripts\scheduled_tasks\weekly_intelligence_orchestrator.py"
+
+REM Capture exit code
+set TASK_EXIT_CODE=%ERRORLEVEL%
+
+echo.
+echo Task completed with exit code: %TASK_EXIT_CODE%
+echo Time: %date% %time%
+
+REM Exit with the same code as the Python script
+exit /b %TASK_EXIT_CODE%
